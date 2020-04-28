@@ -48,42 +48,15 @@ class App extends React.Component {
   }
 
   buildPieces = () => {
-    // console.log('loaded image')
-
-    // console.log('this.refs', this.refs)
-    // const { canvas, image } = this.refs
-    const pieces = generateBoard(this.refs)
+    const { image, canvas } = this.refs
+    // todo - get these from state via user input?
+    const rowLength = 2
+    const columnLength = 2
+    const pieces = generateBoard({ image, canvas, rowLength, columnLength })
     this.setState({ pieces })
-    // console.log("App -> buildPieces -> pieces", pieces)
-    // const { rowLength, columnLength } = this.state
-    // const pieceWidth = image.width / columnLength;
-    // const pieceHeight = image.height / rowLength;
-
-    // // const canvas = this.refs.canvas
-    // const ctx = canvas.getContext('2d')
-    // // const image = this.refs.source
-    // console.time('pieces Render time');
-
-    // ctx.save();
-    // const pieces = []
-    // // loop through rows and columns
-    // for (let row = 0; row < rowLength; row++) {
-    //   // Need to create a row array to push the columns into
-    //   pieces.push([])
-    //   for (let col = 0; col < columnLength; col++) {
-    //     ctx.beginPath();
-    //     const piece = buildPiece({ row, col, ctx, pieceHeight, pieceWidth, imageWidth: image.width, pieces });
-    //     ctx.clearRect(0, 0, 1000, 1000);
-    //     ctx.restore();
-    //     ctx.save();
-    //     pieces[row].push(piece);
-    //   }
-    // }
-    // console.timeEnd('pieces Render time');
   }
 
   handleDragStart = e => {
-
     e.target.setAttrs({
       shadowOffset: {
         x: 15,
@@ -96,12 +69,6 @@ class App extends React.Component {
   }
 
   handleDragEnd = ({ columnIndex, rowIndex, e }) => {
-    const parent = e.target.getParent()
-    console.log("App -> handleDragEnd -> parent", parent)
-    // e.target.getParent().each(function(node) {
-    //   console.log('here', node)
-    // })
-
     // console.log("App -> handleDragEnd -> rowIndex", rowIndex)
     // console.log("App -> handleDragEnd -> columnIndex", columnIndex)
     // todo - check if near partner, and snap into place
@@ -159,40 +126,6 @@ class App extends React.Component {
     //   })
     // }))
 
-    // this.setState( ({ boardState: prevBoardState }) => {
-    // console.log("prevBoardState", prevBoardState)
-
-    //   return {
-    //     boardState: [...prevBoardState]
-        // boardState: [
-        //   [
-        //     {
-        //       x: 0,
-        //       y: 0,
-        //       partners: [
-        //         {
-        //           rowIndex: 0,
-        //           columnIndex: 1,
-        //           isJoined: false
-        //         }
-        //       ]
-        //     },
-        //     {
-        //       x: 0,
-        //       y: 0,
-        //       partners: [
-        //         {
-        //           rowIndex: 0,
-        //           columnIndex: 0,
-        //           isJoined: false
-        //         }
-        //       ]
-        //     }
-        //   ]
-        // ]
-    //   }
-    // })
-
     e.target.to({
       duration: 0.5,
       easing: Konva.Easings.ElasticEaseOut,
@@ -202,17 +135,6 @@ class App extends React.Component {
       shadowOffsetY: 5,
       zIndex: 0
     })
-
-    // if (x < 10) {
-    //   e.target.to({
-    //     x: 0,
-    //     y: 0
-    //   })
-    // }
-    // e.target.to({
-    //   x: 0,
-    //   y: 0
-    // })
   }
 
   render() {
@@ -225,17 +147,14 @@ class App extends React.Component {
 
     return (
       <React.Fragment>
-        {/* <canvas ref={this.canvas} /> */}
         <div style={{ display: 'none' }}>
           <canvas ref='canvas' />
           <img
             src={require('./images/beach.jpg')}
             onLoad={this.buildPieces}
-            // ref={this.source}
             ref='image'
           />
         </div>
-        {/* <div id='container' /> */}
 
         <Stage width={window.innerWidth} height={window.innerHeight}>
           <Layer>
@@ -270,29 +189,14 @@ class App extends React.Component {
                     height={pieces[i][j].height}
                     draggable={true}
                     key={`${i},${j}`}
-                    // shadowColor: "black",
-                    // shadowBlur: 2,
-                    // shadowOpacity: 0.6,
+                    // onDragStart={this.onDragStart}
+                    // shadowColor={"black"}
+                    // shadowBlur={2}
+                    // shadowOpacity={0.6}
+                    // opacity={0.9}
                   />
                 )
-
-                // const img = new Konva.Image({
-                //   image: cvs,
-                //   x: Math.floor(Math.random() * (width - pieceWidth * 2) + (pieceWidth / 2)),
-                //   y: Math.floor(Math.random() * (height - pieceHeight * 2) + (pieceHeight / 2)),
-                //   width: pieces[i][j].width,
-                //   height: pieces[i][j].height,
-                //   draggable: true,
-                // });
-
               }))
-              // <PuzzleRow
-              //   rowIndex={i}
-              //   row={row}
-              //   handleDragStart={this.handleDragStart}
-              //   handleDragEnd={this.handleDragEnd}
-              //   key={`rowIndex:${i}`}
-              // />
             ))}
           </Layer>
         </Stage>
@@ -302,46 +206,3 @@ class App extends React.Component {
 }
 
 render(<App />, document.getElementById('root'))
-
-// var stage = new Konva.Stage({
-//       // container: 'container',
-//       width: width,
-//       height: height
-//     });
-
-
-//     var layer = new Konva.Layer();
-//     // 
-//     pieces.forEach((row, i) => {
-//       row.forEach((piece, j) => {
-//         const cvs = document.createElement('canvas');
-//         const imageData = pieces[i][j].imageData
-//         cvs.width = imageData.width;
-//         cvs.height = imageData.height;
-//         const c = cvs.getContext('2d');
-//         c.putImageData(imageData, 0, 0);
-//         const img = new Konva.Image({
-//           image: cvs,
-//           x: Math.floor(Math.random() * (width - pieceWidth * 2) + (pieceWidth / 2)),
-//           y: Math.floor(Math.random() * (height - pieceHeight * 2) + (pieceHeight / 2)),
-//           width: pieces[i][j].width,
-//           height: pieces[i][j].height,
-//           draggable: true,
-//           // shadowColor: "black",
-//           // shadowBlur: 2,
-//           // shadowOpacity: 0.6,
-//         });
-
-//         stage.on('dragstart', handleDragStart);
-//         stage.on('dragend', handleDragEnd);
-
-//         layer.add(img);
-//       });
-//     });
-
-
-//     // add the layer to the stage
-//     stage.add(layer);
-//     console.timeEnd('Full render')
-//   // }
-
