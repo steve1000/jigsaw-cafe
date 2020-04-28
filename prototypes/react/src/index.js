@@ -1,119 +1,132 @@
 import React from 'react';
 import Konva from 'konva';
 import { render } from 'react-dom';
-import { Stage, Layer, Image, Rect } from 'react-konva';
+import { Stage, Layer, Image } from 'react-konva';
 
-import { PuzzleRow } from './components/puzzle-row'
 import { generateBoard } from './utils/utils'
 
 // todo - refactor this to use hooks for state instead of class component
 class App extends React.Component {
   state = {
     pieces: [],
-    rowLength: 5,
-    columnLength: 5,
-    // pieceWidth: 0,
-    // pieceHeight: 0,
-    // '0,0': {
-    //   x: 10,
-    //   y: 5
-    // }
-    // boardState: generateBoardState(rowLength, columnLength)
-    // boardState: [
-    //   [
-    //     {
-    //       x: 100,
-    //       y: 500,
-    //       partners: [
-    //         {
-    //           rowIndex: 0,
-    //           columnIndex: 1,
-    //           isJoined: false
-    //         }
-    //       ]
-    //     },
-    //     {
-    //       x: 500,
-    //       y: 100,
-    //       partners: [
-    //         {
-    //           rowIndex: 0,
-    //           columnIndex: 0,
-    //           isJoined: false
-    //         }
-    //       ]
-    //     }
-    //   ]
-    // ]
+    rowLength: 3,
+    columnLength: 3,
+    pieceWidth: 0,
+    pieceHeight: 0
   }
 
   buildPieces = () => {
     const { image, canvas } = this.refs
-    // todo - get these from state via user input?
-    const rowLength = 2
-    const columnLength = 2
-    const pieces = generateBoard({ image, canvas, rowLength, columnLength })
-    this.setState({ pieces })
+    const { rowLength, columnLength } = this.state
+    const { pieces, pieceWidth, pieceHeight } = generateBoard({ image, canvas, rowLength, columnLength })
+    this.setState({ pieces, pieceWidth, pieceHeight })
   }
 
-  handleDragStart = e => {
-    e.target.setAttrs({
-      shadowOffset: {
-        x: 15,
-        y: 15
-      },
-      scaleX: 1.1,
-      scaleY: 1.1,
-      zIndex: 9999
-    })
-  }
-
-  handleDragEnd = ({ e, piece }) => {
-    const { target: { attrs: { x, y } } } = e
+  handleDragEnd = ({ e: { target }, piece }) => {
+    const { attrs: { x, y } } = target
     // Todo - change this so it doesn't mutate state (this approach is currently mutating react state)
     piece.setCoordinates(x, y)
 
-    const isCloseToPartner = this.checkIsCloseToPartner(piece)
-
-    // e.target.to({
-    //   duration: 0.5,
-    //   easing: Konva.Easings.ElasticEaseOut,
-    //   scaleX: 1.1,
-    //   scaleY: 1.1,
-    //   shadowOffsetX: 5,
-    //   shadowOffsetY: 5,
-    //   zIndex: 0
-    // })
+    this.maybeSnapToPartner({ piece, target })
   }
 
-  checkIsCloseToPartner = (piece) => {
-    console.log('in checkIsCloseToPartner. piece:', piece)
+  /**
+   * Check if the piece is close to one of its partner pieces
+   * If it is, snap into place
+   */
+  maybeSnapToPartner = ({ target, piece }) => {
+    const { rowLength, columnLength, pieces, pieceWidth, pieceHeight } = this.state
+    const { row, col } = piece
+
+    // distance where pieces will snap into place
+    const distance = pieceHeight / 10
+
+    // find out who partners are
+    const abovePartner = row == 0 ? null : { row: row - 1, col }
+    if (abovePartner) {
+      const abovePiece = pieces[abovePartner.row][abovePartner.col]
+      const targetX = abovePiece.x
+      const targetY = abovePiece.y + pieceHeight
+      if ((Math.abs(targetX - piece.x) < distance) && (Math.abs(targetY - piece.y) < distance)) {
+        piece.setCoordinates(targetX, targetY)
+        target.to({
+          x: targetX,
+          y: targetY,
+          duration: 0.5,
+          easing: Konva.Easings.ElasticEaseOut
+        })
+      }
+    }
+
+    const belowPartner = row + 1 >= rowLength ? null : { row: row + 1, col }
+    if (belowPartner) {
+      const belowPiece = pieces[belowPartner.row][belowPartner.col]
+      const targetX = belowPiece.x
+      const targetY = belowPiece.y - pieceHeight
+      if ((Math.abs(targetX - piece.x) < distance) && (Math.abs(targetY - piece.y) < distance)) {
+        piece.setCoordinates(targetX, targetY)
+        target.to({
+          x: targetX,
+          y: targetY,
+          duration: 0.5,
+          easing: Konva.Easings.ElasticEaseOut
+        })
+      }
+    }
+
+    const leftPartner = col == 0 ? null : { row, col: col - 1 }
+    if (leftPartner) {
+      const leftPiece = pieces[leftPartner.row][leftPartner.col]
+      const targetX = leftPiece.x + pieceWidth
+      const targetY = leftPiece.y
+      if ((Math.abs(targetX - piece.x) < distance) && (Math.abs(targetY - piece.y) < distance)) {
+        piece.setCoordinates(targetX, targetY)
+        target.to({
+          x: targetX,
+          y: targetY,
+          duration: 0.5,
+          easing: Konva.Easings.ElasticEaseOut
+        })
+      }
+    }
+
+    const rightPartner = col + 1 >= columnLength ? null : { row, col: col + 1 }
+    if (rightPartner) {
+      const rightPiece = pieces[rightPartner.row][rightPartner.col]
+      const targetX = rightPiece.x - pieceWidth
+      const targetY = rightPiece.y
+      if ((Math.abs(targetX - piece.x) < distance) && (Math.abs(targetY - piece.y) < distance)) {
+        piece.setCoordinates(targetX, targetY)
+        target.to({
+          x: targetX,
+          y: targetY,
+          duration: 0.5,
+          easing: Konva.Easings.ElasticEaseOut
+        })
+      }
+    }
   }
 
   render() {
-    const { boardState, pieces } = this.state
-    // console.log("render -> pieces", pieces)
-    // console.log("App -> render -> this.state", this.state)
-
-    // const rowLength = 3
-    // const columnLength = 3
+    const { pieces } = this.state
 
     return (
       <React.Fragment>
         <div style={{ display: 'none' }}>
           <canvas ref='canvas' />
           <img
-            src={require('./images/beach.jpg')}
+            src={require('./images/purple.jpeg')}
             onLoad={this.buildPieces}
             ref='image'
           />
         </div>
+        {/* todo - recreate stuff below using this ref, and basic konva */}
+        <div ref="konva" />
 
         <Stage width={window.innerWidth} height={window.innerHeight}>
           <Layer>
             {pieces.map((row, i) => (
-              (row.map((piece, j) => {
-                // console.log("render -> piece,", piece, 'i', i)
+              (row.map((_piece, j) => {
                 const cvs = document.createElement('canvas');
                 const imageData = pieces[i][j].imageData
                 cvs.width = imageData.width;
@@ -125,18 +138,11 @@ class App extends React.Component {
                   <Image
                     image={cvs}
                     x={pieces[i][j].x}
-                    // x={Math.floor(Math.random() * 100)}
                     y={pieces[i][j].y}
-                    // y={Math.floor(Math.random() * 100)}
                     width={pieces[i][j].width}
                     height={pieces[i][j].height}
                     draggable={true}
                     key={`${i},${j}`}
-                    // onDragStart={this.onDragStart}
-                    // shadowColor={"black"}
-                    // shadowBlur={2}
-                    // shadowOpacity={0.6}
-                    // opacity={0.9}
                     onDragEnd={e => this.handleDragEnd({ e, piece: pieces[i][j] })}
                   />
                 )
