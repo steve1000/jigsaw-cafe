@@ -11,12 +11,26 @@ function Piece(row, col) {
   this.setImageData = (imageData) => {
     this.imageData = imageData;
   }
+  this.x = 0
+  this.y = 0
+  this.setCoordinates = (x, y) => {
+    this.x = x
+    this.y = y
+  }
 }
 
 const buildPiece = ({ row, col, ctx, pieceHeight, pieceWidth, image, pieces, canvas }) => {
   const piece = new Piece(row, col);
 
   let sx, sy, ex, ey;
+
+  // const boardWidth = canvas.width
+  // const boardHeight = canvas.height
+  // console.log("buildPiece -> boardWidth", boardWidth)
+  // console.log("buildPiece -> boardHeight", boardHeight)
+
+  // set position
+  piece.setCoordinates(Math.random() * canvas.width / 2, Math.random() * canvas.height / 2)
 
   /**
    * 
@@ -292,14 +306,8 @@ export const generateBoard = ({ image, canvas, rowLength, columnLength }) => {
   const ctx = canvas.getContext('2d');
   const pieces = []
 
-  // todo - need to handle situation where image is larger than canvas
-  console.log("generateBoard -> canvas before", canvas)
   canvas.width = image.width + 400
   canvas.height = image.height + 300
-  console.log("generateBoard -> canvas after", canvas)
-
-  console.log("generateBoard -> image.width", image.width)
-  console.log("generateBoard -> image.height", image.height)
 
   const pieceWidth = image.width / columnLength
   const pieceHeight = image.height / rowLength
