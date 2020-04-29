@@ -13,16 +13,34 @@
 </head>
 
 <body>
+  <div>Upload file: <input type="file" id="image" name="image" accept="image/png, image/jpeg" />
+  </div>
   <canvas id="canvas"></canvas>
   <div id="container"></div>
   <div style="display:none;">
     <!-- <img id="source" src="large-palm.jpeg"> -->
-    <img id="source" src="beach.jpg">
+    <!-- <img id="source" src="beach.jpg"> -->
   </div>
   <script>
 
-    const rows = 2;
-    const columns = 2;
+    var imageLoader = document.getElementById('image');
+    imageLoader.addEventListener('change', handleImage, false);
+
+    function handleImage(e) {
+      var reader = new FileReader();
+      reader.onload = function (event) {
+        var img = new Image();
+        img.onload = function () {
+          image = img;
+          init();
+        }
+        img.src = event.target.result;
+      }
+      reader.readAsDataURL(e.target.files[0]);
+    }
+
+    const rows = 10;
+    const columns = 10;
 
     const canvas = document.getElementById('canvas');
 
@@ -32,7 +50,8 @@
 
     let pieceWidth;
     let pieceHeight;
-    let image = document.getElementById('source');
+    // let image = document.getElementById('source');
+    let image;
 
     const lineTypes = {
       STRAIGHT: 'straight',
@@ -60,13 +79,31 @@
 
       var stage = new Konva.Stage({
         container: 'container',
-        width: width,
-        height: height
+        width: canvas.width,
+        height: canvas.height
       });
 
 
-      var layer = new Konva.Layer();
+      var layer = new Konva.Layer({
+        x: 0,
+        y: 0,
+      });
+
+      var group = new Konva.Group({
+        draggable: true,
+      })
+
+      var group2 = new Konva.Group({
+        draggable: true,
+      })
+
+      // node.getType() -> layer, shape etc
       // 
+
+
+      stage.on('dragstart', handleDragStart);
+      stage.on('dragend', handleDragEnd);
+
       pieces.forEach((row, i) => {
         row.forEach((piece, j) => {
           const cvs = document.createElement('canvas');
@@ -77,8 +114,10 @@
           c.putImageData(imageData, 0, 0);
           const img = new Konva.Image({
             image: cvs,
-            x: Math.floor(Math.random() * (width - pieceWidth * 2) + (pieceWidth / 2)),
-            y: Math.floor(Math.random() * (height - pieceHeight * 2) + (pieceHeight / 2)),
+            // x: Math.floor(Math.random() * (width - pieceWidth * 2) + (pieceWidth / 2)),
+            // y: Math.floor(Math.random() * (height - pieceHeight * 2) + (pieceHeight / 2)),
+            x: j * pieceWidth,
+            y: i * pieceHeight,
             width: pieces[i][j].width,
             height: pieces[i][j].height,
             draggable: true,
@@ -87,14 +126,25 @@
             // shadowOpacity: 0.6,
           });
 
-          stage.on('dragstart', handleDragStart);
-          stage.on('dragend', handleDragEnd);
 
-          layer.add(img);
+          if (i === 0) {
+            img.draggable(false);
+            // console.log('img width height', img.width(), img.height(), img.x(), img.y());
+
+            // group.width(500);
+            // group.height(500);
+            group.add(img);
+          } else {
+            img.draggable(false);
+            group2.add(img);
+          }
+
         });
       });
 
-
+      layer.add(group);
+      layer.add(group2);
+      // stage.add(group);
       // add the layer to the stage
       stage.add(layer);
       console.timeEnd('Full render')
@@ -109,19 +159,32 @@
         // shadowBlur: 10,
         // scaleX: 1.1,
         // scaleY: 1.1,
-        zIndex: 9999,
+        zIndex: 1,
       });
     };
+
     function handleDragEnd(e) {
-      // e.target.to({
-      //     duration: 0.5,
-      //     easing: Konva.Easings.ElasticEaseOut,
-      //     scaleX: 1,
-      //     scaleY: 1,
-      //     shadowOffsetX: 2,
-      //     shadowOffsetY: 2,
-      //     shadowBlur: 2
-      // });
+      if (e.target.getType() === 'Group') {
+
+        const children = e.target.getChildren();
+
+        console.log('Group: ', e.target.getClientRect());
+
+        children.forEach((child, i) => {
+          console.log(`Piece: ${i}`, child.getClientRect());
+        });
+
+        e.target.to({
+          x: e.target.x() + 20
+        });
+
+        // refetch
+        e.target.getChildren().forEach((child, i) => {
+          console.log(`Piece: ${i}`, child.getClientRect());
+        });
+
+        console.log('-'.repeat(20));
+      }
     };
 
 
@@ -184,7 +247,7 @@
 
       // right neck
       context.bezierCurveTo(
-        sx + (width * .61 * signX),
+        sx + (width * .62 * signX),
         sy - (height * .05 * signY),
         sx + (width * .6 * signX),
         sy,
@@ -263,7 +326,7 @@
       // right neck
       context.bezierCurveTo(
         sx - (width * .05 * signX),
-        sy - (height * .61 * signY),
+        sy - (height * .62 * signY),
         sx,
         sy - (height * .6 * signY),
         sx + (width * .05 * signX),
@@ -432,7 +495,7 @@
       console.timeEnd('Pieces Render time');
     }
 
-    image.addEventListener('load', init);
+    // image.addEventListener('load', init);
 
   </script>
 </body>
