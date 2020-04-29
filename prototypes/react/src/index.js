@@ -20,14 +20,54 @@ class App extends React.Component {
     const { rowLength, columnLength } = this.state
     const { pieces, pieceWidth, pieceHeight } = generateBoard({ image, canvas, rowLength, columnLength })
     this.setState({ pieces, pieceWidth, pieceHeight })
+
+    this.drawPieces(pieces)
   }
 
-  handleDragEnd = ({ e: { target }, piece }) => {
-    const { attrs: { x, y } } = target
-    // Todo - change this so it doesn't mutate state (this approach is currently mutating react state)
+  drawPieces = (pieces) => {
+    const stage = new Konva.Stage({
+      container: 'container',
+      width: window.innerWidth,
+      height: window.innerHeight
+    })
+
+    const layer = new Konva.Layer()
+
+    pieces.forEach((row, i) => {
+      row.forEach((_piece, j) => {
+        const cvs = document.createElement('canvas')
+        const imageData = pieces[i][j].imageData
+        cvs.width = imageData.width
+        cvs.height = imageData.height
+        const c = cvs.getContext('2d')
+        c.putImageData(imageData, 0, 0)
+
+        const img = new Konva.Image({
+          image: cvs,
+          x: pieces[i][j].x,
+          y: pieces[i][j].y,
+          width: pieces[i][j].width,
+          height: pieces[i][j].height,
+          draggable: true,
+          row: i,
+          col: j
+        })
+
+        layer.add(img)
+      })
+    })
+
+    stage.on('dragend', e => this.handleDragEndStage({ target: e.target, pieces }))
+    stage.add(layer)
+  }
+
+  handleDragEndStage = ({ target, pieces }) => {
+    const { attrs: { row, col, x, y } } = target
+
+    const piece = pieces[row][col]
     piece.setCoordinates(x, y)
 
-    this.maybeSnapToPartner({ piece, target })
+    this.maybeSnapToPartner({ target, piece })
   }
 
   /**
@@ -36,7 +76,7 @@ class App extends React.Component {
    */
   maybeSnapToPartner = ({ target, piece }) => {
     const { rowLength, columnLength, pieces, pieceWidth, pieceHeight } = this.state
-    const { row, col } = piece
+    const { attrs: { row, col } } = target
 
     // distance where pieces will snap into place
     const distance = pieceHeight / 10
@@ -108,8 +148,6 @@ class App extends React.Component {
   }
 
   render() {
-    const { pieces } = this.state
-
     return (
       <React.Fragment>
         <div style={{ display: 'none' }}>
@@ -120,36 +158,7 @@ class App extends React.Component {
             ref='image'
           />
         </div>
-        {/* todo - recreate stuff below using this ref, and basic konva */}
-        <div ref="konva" />
-
-        <Stage width={window.innerWidth} height={window.innerHeight}>
-          <Layer>
-            {pieces.map((row, i) => (
-              (row.map((_piece, j) => {
-                const cvs = document.createElement('canvas');
-                const imageData = pieces[i][j].imageData
-                cvs.width = imageData.width;
-                cvs.height = imageData.height;
-                const c = cvs.getContext('2d');
-                c.putImageData(imageData, 0, 0);
-
-                return (
-                  <Image
-                    image={cvs}
-                    x={pieces[i][j].x}
-                    y={pieces[i][j].y}
-                    width={pieces[i][j].width}
-                    height={pieces[i][j].height}
-                    draggable={true}
-                    key={`${i},${j}`}
-                    onDragEnd={e => this.handleDragEnd({ e, piece: pieces[i][j] })}
-                  />
-                )
-              }))
-            ))}
-          </Layer>
-        </Stage>
+        <div id='container' />
       </React.Fragment>
     )
   }
