@@ -216,83 +216,83 @@ const bezierH = (sx, sy, ex, ey, type, context, direction, pieceWidth, pieceHeig
   )
 }
 
-  /**
-   * Vertical side of piece
-   * @param sx - start x
-   * @param sy - start y
-   * @param ex - end x
-   * @param ey - end y
-   * @param {string} type - left|right
-   * @param context - Canvas context
-   * @param {string} direction - up|down
-   */
-  function bezierV(sx, sy, ex, ey, type, context, direction, pieceWidth, pieceHeight) {
-    const width = pieceWidth
-    const height = pieceHeight
+/**
+ * Vertical side of piece
+ * @param sx - start x
+ * @param sy - start y
+ * @param ex - end x
+ * @param ey - end y
+ * @param {string} type - left|right
+ * @param context - Canvas context
+ * @param {string} direction - up|down
+ */
+function bezierV(sx, sy, ex, ey, type, context, direction, pieceWidth, pieceHeight) {
+  const width = pieceWidth
+  const height = pieceHeight
 
-    const signX = (type === 'left' ? 1 : -1)
-    const signY = (direction === 'up' ? 1 : -1)
+  const signX = (type === 'left' ? 1 : -1)
+  const signY = (direction === 'up' ? 1 : -1)
 
-    // left shoulder
-    context.bezierCurveTo(
-      sx,
-      sy,
-      sx + (width * .15 * signX),
-      sy - (height * .35 * signY),
-      sx + (width * .05 * signX),
-      sy - (height * .37 * signY),
-    )
+  // left shoulder
+  context.bezierCurveTo(
+    sx,
+    sy,
+    sx + (width * .15 * signX),
+    sy - (height * .35 * signY),
+    sx + (width * .05 * signX),
+    sy - (height * .37 * signY),
+  )
 
-    // left neck
-    context.bezierCurveTo(
-      sx + (width * .05 * signX),
-      sy - (height * .37 * signY),
-      sx,
-      sy - (height * .40 * signY),
-      sx - (width * .05 * signX),
-      sy - (height * .38 * signY),
-    )
+  // left neck
+  context.bezierCurveTo(
+    sx + (width * .05 * signX),
+    sy - (height * .37 * signY),
+    sx,
+    sy - (height * .40 * signY),
+    sx - (width * .05 * signX),
+    sy - (height * .38 * signY),
+  )
 
-    // left head
-    context.bezierCurveTo(
-      sx - (width * .05 * signX),
-      sy - (height * .38 * signY),
-      sx - (width * .2 * signX),
-      sy - (height * .2 * signY),
-      sx - (width * .2 * signX),
-      sy - (height * .5 * signY),
-    )
+  // left head
+  context.bezierCurveTo(
+    sx - (width * .05 * signX),
+    sy - (height * .38 * signY),
+    sx - (width * .2 * signX),
+    sy - (height * .2 * signY),
+    sx - (width * .2 * signX),
+    sy - (height * .5 * signY),
+  )
 
-    // right head
-    context.bezierCurveTo(
-      sx - (width * .2 * signX),
-      sy - (height * .5 * signY),
-      sx - (width * .2 * signX),
-      sy - (height * .8 * signY),
-      sx - (width * .05 * signX),
-      sy - (height * .62 * signY),
-    )
+  // right head
+  context.bezierCurveTo(
+    sx - (width * .2 * signX),
+    sy - (height * .5 * signY),
+    sx - (width * .2 * signX),
+    sy - (height * .8 * signY),
+    sx - (width * .05 * signX),
+    sy - (height * .62 * signY),
+  )
 
-    // right neck
-    context.bezierCurveTo(
-      sx - (width * .05 * signX),
-      sy - (height * .61 * signY),
-      sx,
-      sy - (height * .6 * signY),
-      sx + (width * .05 * signX),
-      sy - (height * .63 * signY),
-    )
+  // right neck
+  context.bezierCurveTo(
+    sx - (width * .05 * signX),
+    sy - (height * .61 * signY),
+    sx,
+    sy - (height * .6 * signY),
+    sx + (width * .05 * signX),
+    sy - (height * .63 * signY),
+  )
 
-    // right shoulder
-    context.bezierCurveTo(
-      sx + (width * .05 * signX),
-      sy - (height * .63 * signY),
-      sx + (width * .15 * signX),
-      sy - (height * .65 * signY),
-      ex,
-      ey
-    )
-  }
+  // right shoulder
+  context.bezierCurveTo(
+    sx + (width * .05 * signX),
+    sy - (height * .63 * signY),
+    sx + (width * .15 * signX),
+    sy - (height * .65 * signY),
+    ex,
+    ey
+  )
+}
 
 export const generateBoard = ({ image, canvas, rowLength, columnLength }) => {
   const ctx = canvas.getContext('2d')
