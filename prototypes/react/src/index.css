@@ -1,0 +1,17 @@
+body {
+  font-family: 'Courier New', Courier, monospace;
+}
+.header {
+  display: grid;
+  grid-template-columns: auto auto auto auto auto;
+  padding: 10px;
+}
+.header-menu {
+  text-align: left;
+}
+.header-score, .header-title, .header-time {
+  text-align: center;
+}
+.header-settings {
+  text-align: right;
+}
