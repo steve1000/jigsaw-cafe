@@ -319,5 +319,5 @@ export const generateBoard = ({ image, canvas, rowLength, columnLength }) => {
     }
   }
 
-  return { pieces, pieceWidth, pieceHeight }
+  return { boardData: pieces, pieceWidth, pieceHeight }
 }
