@@ -1,8 +1,8 @@
 import React from 'react';
 import Konva from 'konva';
 import { render } from 'react-dom';
-import { Stage, Layer, Image } from 'react-konva';
 
+import './index.css'
 import { generateBoard } from './utils/utils'
 
 // todo - refactor this to use hooks for state instead of class component
@@ -12,7 +12,8 @@ class App extends React.Component {
     rowLength: 3,
     columnLength: 3,
     pieceWidth: 0,
-    pieceHeight: 0
+    pieceHeight: 0,
+    showSettings: false
   }
 
   buildPieces = () => {
@@ -147,9 +148,43 @@ class App extends React.Component {
     }
   }
 
+  toggleSettings = () => this.setState(prevState => ({ showSettings: !prevState.showSettings }))
+
   render() {
+    const { showSettings } = this.state
+
     return (
       <React.Fragment>
+        <div className='header'>
+          <div className='header-menu'>
+            <img src={require('./images/menu-icon.svg')} />
+          </div>
+          <div className="header-score">
+            <h3>
+              Completed: 55%
+            </h3>
+          </div>
+          <div className='header-title'>
+            <h1>
+              Jigsaw Cafe ☕️
+            </h1>
+          </div>
+          <div className='header-time'>
+            <h3>
+              30:40
+            </h3>
+          </div>
+          <div className='header-settings' onClick={this.toggleSettings}>
+            <img src={require('./images/settings-icon.svg')} className='header-settings__icon' />
+          </div>
+        </div>
+        <div className='body'>
+          {showSettings && (
+            <div className='settings'>
+              <p>settings go here</p>
+            </div>
+          )}
+        </div>
         <div style={{ display: 'none' }}>
           <canvas ref='canvas' />
           <img
