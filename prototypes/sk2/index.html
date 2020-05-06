@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+
+<html>
+
+<head>
+
+  <script src="three.js"></script>
+  <script src="orbit-controls.js"></script>
+  <script src="drag-controls.js"></script>
+  <script src="utils.js"></script>
+
+  <script type="module">
+    import { GUI } from 'https://threejsfundamentals.org/threejs/../3rdparty/dat.gui.module.js';
+
+    var renderer, scene, camera, light;
+
+    function createShape(shape, extrudeSettings, color, x, y, z, rx, ry, rz, s, texture) {
+      // extruded shape
+      const geometry = new THREE.ExtrudeBufferGeometry(shape, extrudeSettings);
+
+      // const multi_material = [
+      //   new THREE.MeshPhongMaterial({ side: THREE.FrontSide, map: texture }),
+      //   new THREE.MeshPhongMaterial({ color: 0xFFFFFF }),
+      // ]
+      // const mesh = new THREE.Mesh(geometry, multi_material)
+
+      var mesh = new THREE.Mesh(geometry, new THREE.MeshPhongMaterial({ color: color, side: THREE.DoubleSide }));
+      mesh.position.set(x, y, z);
+      mesh.rotation.set(rx, ry, rz);
+      mesh.scale.set(s, s, s);
+      return mesh;
+    }
+
+    window.onload = function () {
+
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.getElementById('viewport').appendChild(renderer.domElement);
+
+      scene = new THREE.Scene();
+
+      light = new THREE.DirectionalLight(0xffffff);
+      light.position.set(200, 500, 1).normalize();
+      scene.add(light);
+
+      scene.add(new THREE.AmbientLight(0x505050));
+
+      renderer.shadowMap.enabled = true;
+      renderer.shadowMap.type = THREE.PCFShadowMap;
+
+      camera = new THREE.PerspectiveCamera(
+        60,
+        window.innerWidth / window.innerHeight,
+        1,
+        10000
+      );
+      camera.position.set(150, 300, 300);
+
+      // camera.lookAt(scene.position);
+      camera.lookAt({ x: 150, y: 0, z: 300 });
+      scene.add(camera);
+
+      var size = 1000;
+      var divisions = 10;
+      var gridHelper = new THREE.GridHelper(size, divisions);
+      scene.add(gridHelper);
+
+      var axesHelper = new THREE.AxesHelper(3);
+      scene.add(axesHelper);
+
+      const mouse = new THREE.Vector2();
+      const raycaster = new THREE.Raycaster();
+
+      const pieces = [];
+      const threePieces = [];
+      const hoveredPieces = {};
+      let lastHoveredPiece = '';
+      const columnLength = 3;
+      const rowLength = 3;
+
+      const group = new THREE.Group();
+      const testGroup = new THREE.Group();
+      // create a new group
+      const g = new THREE.Group();
+
+      var loader = new THREE.TextureLoader();
+      var textureLoader = loader.load("large-palm.jpeg", function (texture) {
+
+        const imageWidth = texture.image.width;
+        const imageHeight = texture.image.height;
+
+        const textureOffsetX = imageWidth / columnLength;
+        const textureOffsetY = imageHeight / rowLength;
+        const ratio = textureOffsetX / textureOffsetY;
+
+        let pieceWidth = 100;
+        let pieceHeight = 100;
+        if (ratio > 1) {
+          pieceHeight = pieceWidth / ratio
+        } else {
+          pieceWidth = pieceHeight * ratio
+        }
+
+        texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+
+        // loop through rows and columns
+        for (let row = 0; row < rowLength; row++) {
+          // Need to create a row array to push the columns into
+          pieces.push([])
+          for (let col = 0; col < columnLength; col++) {
+            const pieceObj = new Piece(row, col);
+            // Puzzle piece
+            let piece;
+
+            // left
+            let prevRight = pieces[row][col - 1] ? pieces[row][col - 1].sides.right : { type: 'straight' }
+            piece = verticalSide(0, 0, 0, pieceHeight, prevRight.type, new THREE.Shape(), 'down', pieceWidth, pieceHeight, col === 0);
+            pieceObj.setSide(
+              'left',
+              {
+                type: prevRight.type,
+                sx: col * pieceWidth,
+                sy: row * pieceHeight,
+                ex: (col * pieceWidth),
+                ey: (row * pieceHeight) + pieceHeight
+              }
+            );
+
+            // bottom
+            let type = Math.random() > 0.5 ? 'up' : 'down'
+            piece = horizonalSide(0, pieceHeight, pieceWidth, pieceHeight, type, piece, 'right', pieceWidth, pieceHeight, row === rowLength - 1);
+            pieceObj.setSide(
+              'bottom',
+              {
+                type,
+                sx: col * pieceWidth,
+                sy: (row * pieceHeight) + pieceHeight,
+                ex: (col * pieceWidth) + pieceWidth,
+                ey: (row * pieceHeight) + pieceHeight
+              }
+            );
+
+            // right
+            let type2 = Math.random() > 0.5 ? 'left' : 'right'
+            // start where we left from the previous line
+            piece = verticalSide(pieceWidth, pieceHeight, pieceWidth, 0, type2, piece, 'up', pieceWidth, pieceHeight, col === columnLength - 1);
+            pieceObj.setSide(
+              'right',
+              {
+                type: type2,
+                sx: (col * pieceWidth) + pieceWidth,
+                sy: (row * pieceHeight) + pieceHeight,
+                ex: (col * pieceWidth) + pieceWidth,
+                ey: row * pieceHeight
+              }
+            )
+
+            // top
+            const prevTop = pieces[row - 1] && pieces[row - 1][col] ? pieces[row - 1][col].sides.bottom : { type: 'straight' }
+            piece = horizonalSide(pieceWidth, 0, 0, 0, prevTop.type, piece, 'left', pieceWidth, pieceHeight, row === 0);
+            pieceObj.setSide(
+              'top',
+              {
+                type: prevTop.type,
+                sx: (col * pieceWidth) + pieceWidth,
+                sy: row * pieceHeight,
+                ex: col * pieceWidth,
+                ey: row * pieceHeight
+              }
+            )
+
+            var extrudeSettings = {
+              depth: 8,
+              bevelEnabled: true,
+              bevelSegments: 2,
+              steps: 2,
+              bevelSize: 1,
+              bevelThickness: 1
+            };
+
+            const x = col * pieceWidth;
+            const y = col === 0 && row === 0 ? 40 : 10;
+            const z = row * pieceHeight;
+
+            const newTexture = texture.clone()
+            newTexture.needsUpdate = true;
+            // newTexture.repeat.x = pieceWidth / imageWidth;
+            // newTexture.repeat.y = pieceHeight / imageHeight;
+
+            // newTexture.offset.set(
+            //   (col * textureOffsetX) * newTexture.repeat.x,
+            //   (row * textureOffsetY) * newTexture.repeat.y
+            // );
+
+            // console.log('repeat.x', (pieceWidth / textureOffsetX) / Math.pow(columnLength, 2) / (ratio > 1 ? ratio: 1 / ratio) * -1);
+            // console.log('repeat.y', (pieceHeight / textureOffsetY) / Math.pow(rowLength, 2) / (ratio > 1 ? 1 / ratio : ratio));
+            newTexture.repeat.x = (pieceWidth / textureOffsetX) / Math.pow(columnLength, 2) / (ratio > 1 ? ratio : 1 / ratio) * -1;
+            // newTexture.repeat.y = (pieceHeight / textureOffsetY) / Math.pow(rowLength, 2) / (ratio > 1 ? 1 / ratio : ratio);
+            // newTexture.repeat.y = 0.0244140625;
+            // newTexture.repeat.x = (pieceWidth / imageWidth) / columnLength;
+            newTexture.repeat.y = (pieceHeight / imageHeight) / rowLength;
+
+            newTexture.offset.x = (1 / columnLength) * col * -1;
+            newTexture.offset.y = (1 / rowLength) * row;
+
+            // createShape( shape, color, x, y, z, rx, ry, rz, s );
+            // const puzzle = createShape(piece, extrudeSettings, `#${(Math.random() * 0xAAAAAA << 0).toString(16)}`, x, y, z, Math.PI / 2, 0, 0, 1, newTexture);
+            const puzzle = createShape(piece, extrudeSettings, `#${(Math.round(Math.random() * 5)).toString().repeat(6)}`, x, y, z, Math.PI / 2, 0, 0, 1, newTexture);
+
+            pieces[row].push(pieceObj);
+
+            // User defined data
+            // Piece ID will identify where the piece should live when completed
+            puzzle.userData.pieceId = `${row},${col}`;
+            // grouped with will be used when creating a group to drag around
+            puzzle.userData.groupedWith = new Set();
+
+            puzzle.castShadow = true;
+            puzzle.receiveShadow = true;
+
+            threePieces.push(puzzle);
+            if (col === 2) {
+              puzzle.userData.isGrouped = true;
+              testGroup.add(puzzle);
+            } else {
+              scene.add(puzzle)
+            }
+          }
+        }
+
+        scene.add(testGroup);
+
+        scene.add(group);
+
+        var orbitControls = new OrbitControls(camera, renderer.domElement);
+        var dragControls = new DragControls([...threePieces], camera, renderer.domElement);
+
+        document.addEventListener('mousemove', onMouseMove, false);
+
+        dragControls.addEventListener('dragstart', dragStart);
+        dragControls.addEventListener('dragend', dragend);
+        dragControls.addEventListener('drag', handleDrag);
+
+        function onMouseMove(event) {
+          event.preventDefault();
+          mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+          mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+
+          // Hightlight the piece on hover
+          raycaster.setFromCamera(mouse, camera);
+          const intersection = raycaster.intersectObject(scene, true);
+
+          if (intersection[0] && intersection[0].object.type === 'Mesh') {
+            hoveredPieces[intersection[0].object.uuid] = intersection[0].object;
+          }
+
+          const draggableObjects = dragControls.getObjects();
+          draggableObjects.length = 0;
+
+          for (const key in hoveredPieces) {
+            const piece = hoveredPieces[key];
+            if (
+              intersection[0]
+              && piece.uuid === intersection[0].object.uuid
+              && intersection[0].object.type === 'Mesh'
+            ) {
+
+              // there will no longer be a 'group'
+              if (piece.userData.isGrouped && piece.parent.type !== 'Group') {
+                // add all objects to them
+                piece.userData.groupedWith.forEach((_, pieceId) => {
+                  const p = threePieces.find(o => o.userData.pieceId === pieceId);
+                  g.add(p);
+                  // Also update their highlight colour
+                  p.material.emissive.set(0x444444);
+                });
+                // update own colour
+                piece.material.emissive.set(0x444444);
+                // add self to group 🤦🏻‍♂️
+                g.add(piece);
+                // add the group to the scene
+                scene.add(g);
+              }
+
+              if (piece.userData.isGrouped) {
+                // handle drag controls
+                dragControls.transformGroup = true;
+                // add to draggables
+                draggableObjects.push(g);
+              }
+
+              if (!piece.userData.isGrouped) {
+                // set it to false and remove group
+                draggableObjects.push(piece);
+                piece.material.emissive.set(0x444444);
+              }
+            } else {
+              if (piece.parent.type === 'Group') {
+                piece.parent.children.forEach(pieceObj => {
+                  // remove from group
+                  pieceObj.material.emissive.set(0x000000);
+                  // if (!piece.parent.userData.isAnimating) {
+                    scene.attach(pieceObj);
+                  // }
+                });
+                piece.material.emissive.set(0x000000);
+                scene.attach(piece);
+              } else {
+                piece.userData.groupedWith.forEach((_, pieceId) => {
+                  const p = threePieces.find(o => o.userData.pieceId === pieceId);
+                  // Also update their highlight colour
+                  p.material.emissive.set(0x000000);
+                  scene.attach(p);
+                });
+                piece.material.emissive.set(0x000000);
+                scene.attach(piece);
+              }
+              dragControls.transformGroup = false;
+              draggableObjects.push(...threePieces);
+              delete hoveredPieces[piece.uuid];
+            }
+          }
+        }
+
+        function handleDrag(event) {
+          const { object } = event;
+          object.position.y = 40;
+        }
+
+        function animateDrop(object) {
+          object.position.y = (object.type === 'Group' ? 0 : 10);
+          // if (object.position.y > (object.type === 'Group' ? 0 : 10)) {
+          //   object.userData.isAnimating = true;
+          //   object.position.y -= 5;
+          //   requestAnimationFrame(animateDrop.bind(this, object))
+          // } else {
+            console.log('item dropped', object);
+            object.userData.isAnimating = false;
+            // Sample 1 object joining to another and creating a group
+            if (object.userData.pieceId === '0,0') {
+              const otherPiece = threePieces.find(o => o.userData.pieceId === '1,0');
+
+              // now don't create a group, we'll do that on hover
+              // once the item is dropped, check if it's near its neighbours
+              // then manually create groups in the userData
+
+              // fow now let's just join them virtually
+              object.userData.groupedWith.add(otherPiece.userData.pieceId);
+              object.userData.isGrouped = true;
+              otherPiece.userData.groupedWith.add(object.userData.pieceId);
+              otherPiece.userData.isGrouped = true;
+
+              // // join into a new group
+              // const g = new THREE.Group();
+              // g.add(object, otherPiece);
+              // console.log('group a', g);
+              // // add group to scene
+              // scene.add(g);
+            }
+
+            // This was an experiment
+
+            // if (object.type === 'Group') {
+            //   console.log('group dropped', object);
+            //   // only do it on the right hand group for now
+            //   if (object.children.find(o => o.userData.pieceId === '0,2')) {
+            //     // later we'll loop through all of the pieces and find their neighbours
+            //     // for now we'll just add a known piece
+            //     const otherPiece = threePieces.find(o => o.userData.pieceId === '0,1');
+            //     if (otherPiece.parent.type !== 'Group') {
+            //       // object.add(otherPiece);
+            //       object.children.forEach(child => {
+            //         // ungroup
+            //         scene.attach(child);
+            //       });
+            //     }
+            //   }
+
+            //   // group to group (we'll use 0,0 connecting to 0,1 after it's been added)
+            //   if (object.children.find(o => o.userData.pieceId === '0,0')) {
+            //     // later we'll loop through all of the pieces and find their neighbours
+            //     // for now we'll just add a known piece
+            //     const otherPiece = threePieces.find(o => o.userData.pieceId === '0,1');
+            //     if (otherPiece.parent.type === 'Group') {
+            //       // add all of this group to other group
+            //       object.children.forEach(child => {
+            //         console.log('both children?', child);
+            //         otherPiece.parent.add(child);
+            //       });
+            //     } else {
+            //       console.log('other piece is not group', object);
+            //     }
+            //   }
+            // }
+
+            // // piece to group
+            // if (object.userData.pieceId === '0,1') {
+            //   // add the piece next to it.
+            //   // if the piece is in a group, add it to the group
+            //   const otherPiece = threePieces.find(o => o.userData.pieceId === '0,2');
+            //   if (otherPiece.parent.type === 'Group') {
+            //     otherPiece.parent.add(object);
+            //   }
+            // }
+          // }
+        }
+
+        function dragend(event) {
+          orbitControls.enabled = true;
+          animateDrop(event.object)
+        }
+
+        function dragStart(event) {
+          const { object } = event;
+
+          orbitControls.enabled = false;
+          object.position.y = 40;
+        }
+
+        (function animate(time) {
+          setTimeout(function () {
+            orbitControls.update();
+            renderer.render(scene, camera);
+            requestAnimationFrame(animate);
+          }, 1000 / 24);
+        })();
+
+        renderer.render(scene, camera);
+      });
+
+    }
+  </script>
+
+  <style type="text/css">
+    html,
+    body {
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+  </style>
+
+</head>
+
+<body>
+  <div id="viewport"></div>
+</body>
+
+</html>
