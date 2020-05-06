@@ -77,11 +77,12 @@
       let lastHoveredPiece = '';
       const columnLength = 3;
       const rowLength = 3;
+      let isDragging = false;
 
       const group = new THREE.Group();
       const testGroup = new THREE.Group();
       // create a new group
-      const g = new THREE.Group();
+      let g = new THREE.Group();
 
       var loader = new THREE.TextureLoader();
       var textureLoader = loader.load("large-palm.jpeg", function (texture) {
@@ -242,6 +243,9 @@
         dragControls.addEventListener('drag', handleDrag);
 
         function onMouseMove(event) {
+          if (isDragging) {
+            return;
+          }
           event.preventDefault();
           mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
           mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
@@ -305,6 +309,7 @@
                 });
                 piece.material.emissive.set(0x000000);
                 scene.attach(piece);
+                g = new THREE.Group();
               } else {
                 piece.userData.groupedWith.forEach((_, pieceId) => {
                   const p = threePieces.find(o => o.userData.pieceId === pieceId);
@@ -336,6 +341,7 @@
           // } else {
             console.log('item dropped', object);
             object.userData.isAnimating = false;
+            isDragging = false;
             // Sample 1 object joining to another and creating a group
             if (object.userData.pieceId === '0,0') {
               const otherPiece = threePieces.find(o => o.userData.pieceId === '1,0');
@@ -412,7 +418,7 @@
 
         function dragStart(event) {
           const { object } = event;
-
+          isDragging = true;
           orbitControls.enabled = false;
           object.position.y = 40;
         }
