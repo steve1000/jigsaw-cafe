@@ -398,6 +398,8 @@
                 c.userData.groupedWith.add(abovePiece.userData.pieceId);
                 abovePiece.userData.groupedWith.add(c.userData.pieceId);
                 abovePiece.userData.groupedWith.forEach((_, p) => {
+                  const other = threePieces.find(o => o.userData.pieceId === p);
+                  other.userData.groupedWith.add(c.userData.pieceId);
                   c.userData.groupedWith.add(p);
                 });
                 c.userData.groupedWith.delete(c.userData.pieceId);
@@ -434,6 +436,8 @@
                 c.userData.groupedWith.add(belowPiece.userData.pieceId);
                 belowPiece.userData.groupedWith.add(c.userData.pieceId);
                 belowPiece.userData.groupedWith.forEach((_, p) => {
+                  const other = threePieces.find(o => o.userData.pieceId === p);
+                  other.userData.groupedWith.add(c.userData.pieceId);
                   c.userData.groupedWith.add(p);
                 });
                 c.userData.groupedWith.delete(c.userData.pieceId);
@@ -469,6 +473,8 @@
                 c.userData.groupedWith.add(leftPiece.userData.pieceId);
                 leftPiece.userData.groupedWith.add(c.userData.pieceId);
                 leftPiece.userData.groupedWith.forEach((_, p) => {
+                  const other = threePieces.find(o => o.userData.pieceId === p);
+                  other.userData.groupedWith.add(c.userData.pieceId);
                   c.userData.groupedWith.add(p);
                 });
                 c.userData.groupedWith.delete(c.userData.pieceId);
@@ -504,6 +510,8 @@
                 c.userData.groupedWith.add(rightPiece.userData.pieceId);
                 rightPiece.userData.groupedWith.add(c.userData.pieceId);
                 rightPiece.userData.groupedWith.forEach((_, p) => {
+                  const other = threePieces.find(o => o.userData.pieceId === p);
+                  other.userData.groupedWith.add(c.userData.pieceId);
                   c.userData.groupedWith.add(p);
                 });
                 c.userData.groupedWith.delete(c.userData.pieceId);
