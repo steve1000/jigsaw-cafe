@@ -77,11 +77,12 @@
       let lastHoveredPiece = '';
       const columnLength = 3;
       const rowLength = 3;
+      let isDragging = false;
 
       const group = new THREE.Group();
       const testGroup = new THREE.Group();
       // create a new group
-      const g = new THREE.Group();
+      let g = new THREE.Group();
 
       var loader = new THREE.TextureLoader();
       var textureLoader = loader.load("large-palm.jpeg", function (texture) {
@@ -219,12 +220,12 @@
             puzzle.receiveShadow = true;
 
             threePieces.push(puzzle);
-            if (col === 2) {
-              puzzle.userData.isGrouped = true;
-              testGroup.add(puzzle);
-            } else {
-              scene.add(puzzle)
-            }
+            // if (col === 2) {
+            //   puzzle.userData.isGrouped = true;
+            //   testGroup.add(puzzle);
+            // } else {
+            scene.add(puzzle)
+            // }
           }
         }
 
@@ -242,9 +243,14 @@
         dragControls.addEventListener('drag', handleDrag);
 
         function onMouseMove(event) {
-          event.preventDefault();
-          mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-          mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+          if (isDragging) {
+            return;
+          }
+          if (event) {
+            event.preventDefault();
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+          }
 
           // Hightlight the piece on hover
           raycaster.setFromCamera(mouse, camera);
@@ -299,12 +305,11 @@
                 piece.parent.children.forEach(pieceObj => {
                   // remove from group
                   pieceObj.material.emissive.set(0x000000);
-                  // if (!piece.parent.userData.isAnimating) {
-                    scene.attach(pieceObj);
-                  // }
+                  scene.attach(pieceObj);
                 });
                 piece.material.emissive.set(0x000000);
                 scene.attach(piece);
+                g = new THREE.Group();
               } else {
                 piece.userData.groupedWith.forEach((_, pieceId) => {
                   const p = threePieces.find(o => o.userData.pieceId === pieceId);
@@ -314,6 +319,7 @@
                 });
                 piece.material.emissive.set(0x000000);
                 scene.attach(piece);
+                g = new THREE.Group();
               }
               dragControls.transformGroup = false;
               draggableObjects.push(...threePieces);
@@ -334,75 +340,194 @@
           //   object.position.y -= 5;
           //   requestAnimationFrame(animateDrop.bind(this, object))
           // } else {
-            console.log('item dropped', object);
-            object.userData.isAnimating = false;
-            // Sample 1 object joining to another and creating a group
-            if (object.userData.pieceId === '0,0') {
-              const otherPiece = threePieces.find(o => o.userData.pieceId === '1,0');
+          object.userData.isAnimating = false;
+          isDragging = false;
 
-              // now don't create a group, we'll do that on hover
-              // once the item is dropped, check if it's near its neighbours
-              // then manually create groups in the userData
+          console.log('Dropped...', threePieces);
+          let childPieceIds;
+          let l = false;
+          let r = false;
+          let a = false;
+          let b = false;
 
-              // fow now let's just join them virtually
-              object.userData.groupedWith.add(otherPiece.userData.pieceId);
-              object.userData.isGrouped = true;
-              otherPiece.userData.groupedWith.add(object.userData.pieceId);
-              otherPiece.userData.isGrouped = true;
+          if (object.type === 'Group') {
+            childPieceIds = object.children.map(c => c.userData.pieceId);
+          } else {
+            childPieceIds = [object.userData.pieceId];
+          }
 
-              // // join into a new group
-              // const g = new THREE.Group();
-              // g.add(object, otherPiece);
-              // console.log('group a', g);
-              // // add group to scene
-              // scene.add(g);
+          let matchedId = '';
+          // loop through each piece and do the check
+          for (let i = 0; i < childPieceIds.length; i++) {
+            const child = threePieces.find(o => o.userData.pieceId === childPieceIds[i]);
+            scene.attach(child);
+            // if a side matches, move the piece then return
+            // the other pieces will need to move by the same amount
+            const pId = child.userData.pieceId.split(',');
+            const row = parseInt(pId[0], 10);
+            const col = parseInt(pId[1], 10);
+            const abovePiece = threePieces.find(o => o.userData.pieceId === `${row - 1},${col}`);
+            const belowPiece = threePieces.find(o => o.userData.pieceId === `${row + 1},${col}`);
+            const leftPiece = threePieces.find(o => o.userData.pieceId === `${row},${col - 1}`);
+            const rightPiece = threePieces.find(o => o.userData.pieceId === `${row},${col + 1}`);
+
+            // check for above piece match
+            if (
+              // Could possibly not exist
+              abovePiece
+              // If already grouped, don't try and match again
+              && !child.userData.groupedWith.has(abovePiece.userData.pieceId)
+              // check positions for snap
+              && child.position.x < abovePiece.position.x + 10
+              && child.position.x > abovePiece.position.x - 10
+              && child.position.z - pieceHeight < abovePiece.position.z + 10
+              && child.position.z - pieceHeight > abovePiece.position.z - 10
+            ) {
+              matchedId = child.userData.pieceId;
+              // work out x distance to point and z distance to point.
+              const offsetX = abovePiece.position.x - child.position.x;
+              const offsetZ = abovePiece.position.z - child.position.z + pieceHeight;
+              console.log('Matched with above piece', `offsetX: ${offsetX}, offsetZ: ${offsetZ}`);
+
+              // apply that to all of the pieces
+              childPieceIds.forEach(id => {
+                const c = threePieces.find(o => o.userData.pieceId === id);
+                c.position.x = c.position.x + offsetX;
+                c.position.z = c.position.z + offsetZ;
+                // update the connectedTo or groupedWith to all of the children
+                c.userData.groupedWith.add(abovePiece.userData.pieceId);
+                abovePiece.userData.groupedWith.add(c.userData.pieceId);
+                abovePiece.userData.groupedWith.forEach((_, p) => {
+                  const other = threePieces.find(o => o.userData.pieceId === p);
+                  other.userData.groupedWith.add(c.userData.pieceId);
+                  c.userData.groupedWith.add(p);
+                });
+                c.userData.groupedWith.delete(c.userData.pieceId);
+              });
+              child.userData.isGrouped = true;
+              abovePiece.userData.isGrouped = true;
             }
 
-            // This was an experiment
+            // TODO: need to handle when you add one piece to 2 pieces at once!
+            // 0,0 joining both 1,0 and 0,1 is causing issues
 
-            // if (object.type === 'Group') {
-            //   console.log('group dropped', object);
-            //   // only do it on the right hand group for now
-            //   if (object.children.find(o => o.userData.pieceId === '0,2')) {
-            //     // later we'll loop through all of the pieces and find their neighbours
-            //     // for now we'll just add a known piece
-            //     const otherPiece = threePieces.find(o => o.userData.pieceId === '0,1');
-            //     if (otherPiece.parent.type !== 'Group') {
-            //       // object.add(otherPiece);
-            //       object.children.forEach(child => {
-            //         // ungroup
-            //         scene.attach(child);
-            //       });
-            //     }
-            //   }
+            // piece below
+            if (
+              belowPiece
+              // If already grouped, don't try and match again
+              && !child.userData.groupedWith.has(belowPiece.userData.pieceId)
+              // check positions for snap
+              && child.position.x < belowPiece.position.x + 10
+              && child.position.x > belowPiece.position.x - 10
+              && child.position.z + pieceHeight < belowPiece.position.z + 10
+              && child.position.z + pieceHeight > belowPiece.position.z - 10
+            ) {
+              matchedId = child.userData.pieceId;
+              // work out x distance to point and z distance to point.
+              const offsetX = belowPiece.position.x - child.position.x;
+              const offsetZ = belowPiece.position.z - child.position.z - pieceHeight;
+              console.log('Matched with below piece', `offsetX: ${offsetX}, offsetZ: ${offsetZ}`);
+              // apply that to all of the pieces
+              childPieceIds.forEach(id => {
+                const c = threePieces.find(o => o.userData.pieceId === id);
+                c.position.x = c.position.x + offsetX;
+                c.position.z = c.position.z + offsetZ;
+                // update the connectedTo or groupedWith to all of the children
+                c.userData.groupedWith.add(belowPiece.userData.pieceId);
+                belowPiece.userData.groupedWith.add(c.userData.pieceId);
+                belowPiece.userData.groupedWith.forEach((_, p) => {
+                  const other = threePieces.find(o => o.userData.pieceId === p);
+                  other.userData.groupedWith.add(c.userData.pieceId);
+                  c.userData.groupedWith.add(p);
+                });
+                c.userData.groupedWith.delete(c.userData.pieceId);
+              });
+              child.userData.isGrouped = true;
+              belowPiece.userData.isGrouped = true;
+            }
 
-            //   // group to group (we'll use 0,0 connecting to 0,1 after it's been added)
-            //   if (object.children.find(o => o.userData.pieceId === '0,0')) {
-            //     // later we'll loop through all of the pieces and find their neighbours
-            //     // for now we'll just add a known piece
-            //     const otherPiece = threePieces.find(o => o.userData.pieceId === '0,1');
-            //     if (otherPiece.parent.type === 'Group') {
-            //       // add all of this group to other group
-            //       object.children.forEach(child => {
-            //         console.log('both children?', child);
-            //         otherPiece.parent.add(child);
-            //       });
-            //     } else {
-            //       console.log('other piece is not group', object);
-            //     }
-            //   }
-            // }
+            // piece left
+            if (
+              // Could possible not exist
+              leftPiece
+              // If already grouped, don't try and match again
+              && !child.userData.groupedWith.has(leftPiece.userData.pieceId)
+              // check positions for snap
+              && child.position.x - pieceWidth < leftPiece.position.x + 10
+              && child.position.x - pieceWidth > leftPiece.position.x - 10
+              && child.position.z < leftPiece.position.z + 10
+              && child.position.z > leftPiece.position.z - 10
+            ) {
+              matchedId = child.userData.pieceId;
+              // work out x distance to point and z distance to point.
+              const offsetX = leftPiece.position.x - child.position.x + pieceWidth;
+              const offsetZ = leftPiece.position.z - child.position.z;
+              console.log('Matched with left piece', `offsetX: ${offsetX}, offsetZ: ${offsetZ}`);
 
-            // // piece to group
-            // if (object.userData.pieceId === '0,1') {
-            //   // add the piece next to it.
-            //   // if the piece is in a group, add it to the group
-            //   const otherPiece = threePieces.find(o => o.userData.pieceId === '0,2');
-            //   if (otherPiece.parent.type === 'Group') {
-            //     otherPiece.parent.add(object);
-            //   }
-            // }
-          // }
+              // apply that to all of the pieces
+              childPieceIds.forEach(id => {
+                const c = threePieces.find(o => o.userData.pieceId === id);
+                c.position.x = c.position.x + offsetX;
+                c.position.z = c.position.z + offsetZ;
+                // update the connectedTo or groupedWith to all of the children
+                c.userData.groupedWith.add(leftPiece.userData.pieceId);
+                leftPiece.userData.groupedWith.add(c.userData.pieceId);
+                leftPiece.userData.groupedWith.forEach((_, p) => {
+                  const other = threePieces.find(o => o.userData.pieceId === p);
+                  other.userData.groupedWith.add(c.userData.pieceId);
+                  c.userData.groupedWith.add(p);
+                });
+                c.userData.groupedWith.delete(c.userData.pieceId);
+              });
+              child.userData.isGrouped = true;
+              leftPiece.userData.isGrouped = true;
+            }
+
+            // piece right
+            if (
+              // Could possible not exist
+              rightPiece
+              // If already grouped, don't try and match again
+              && !child.userData.groupedWith.has(rightPiece.userData.pieceId)
+              // check positions for snap
+              && child.position.x + pieceWidth < rightPiece.position.x + 10
+              && child.position.x + pieceWidth > rightPiece.position.x - 10
+              && child.position.z < rightPiece.position.z + 10
+              && child.position.z > rightPiece.position.z - 10
+            ) {
+              matchedId = child.userData.pieceId;
+              // work out x distance to point and z distance to point.
+              const offsetX = rightPiece.position.x - child.position.x - pieceWidth;
+              const offsetZ = rightPiece.position.z - child.position.z;
+              console.log('Matched with right piece', `offsetX: ${offsetX}, offsetZ: ${offsetZ}`);
+
+              // apply that to all of the pieces
+              childPieceIds.forEach(id => {
+                const c = threePieces.find(o => o.userData.pieceId === id);
+                c.position.x = c.position.x + offsetX;
+                c.position.z = c.position.z + offsetZ;
+                // update the groupedWith to all of the children
+                c.userData.groupedWith.add(rightPiece.userData.pieceId);
+                rightPiece.userData.groupedWith.add(c.userData.pieceId);
+                rightPiece.userData.groupedWith.forEach((_, p) => {
+                  const other = threePieces.find(o => o.userData.pieceId === p);
+                  other.userData.groupedWith.add(c.userData.pieceId);
+                  c.userData.groupedWith.add(p);
+                });
+                c.userData.groupedWith.delete(c.userData.pieceId);
+              });
+              child.userData.isGrouped = true;
+              rightPiece.userData.isGrouped = true;
+            }
+
+          }
+
+          // this must be called at the end of piece drop to engage any groups that need to be
+          // created, otherwise if the mouse does not move before clicking again,
+          // it will not grab the right objects to move
+          g = new THREE.Group();
+          onMouseMove(undefined);
+          return;
         }
 
         function dragend(event) {
@@ -412,7 +537,7 @@
 
         function dragStart(event) {
           const { object } = event;
-
+          isDragging = true;
           orbitControls.enabled = false;
           object.position.y = 40;
         }
